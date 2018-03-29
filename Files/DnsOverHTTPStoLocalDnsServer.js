@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.2.0 2018/03/29 キャッシュ機能のバグを修正、localhostのAレコードを返すように変更
 // 1.1.0 2018/03/29 PTRレコードとMXレコードに対応
 // 1.0.0 2018/03/28 初版
 // ----------------------------------------------------------------------------
@@ -14,6 +15,9 @@
 //=============================================================================
 
 "use strict";//厳格なエラーチェック
+
+// サーバーバージョン
+var version = "1.2.0";
 
 var dnsd = require("dnsd");
 var https = require("https");
@@ -36,8 +40,11 @@ dnsd.createServer(function (req, res) {
    if (type === "request" && opcode === "query") {
       let question = req.question[0];
       if (question.type === "A" || question.type === "MX" || question.type === "PTR") {
-         if (question.name === "dns.google.com") {
+         if (question.type === "A" && question.name === "dns.google.com") {
             res.end("172.217.27.174");
+         } else if (question.type === "A" && question.name === "localhost") {
+            console.log("localhost is 127.0.0.1");
+            res.end("127.0.0.1");
          } else {
             if (isCached(question.type, question.name)) {
                console.log(question.name + " " + question.type + " Record" + " is Cached")
@@ -82,11 +89,15 @@ function name(req, res) {
             ans.ttl = String(ans.TTL);
             delete ans.TTL;
             ans.type = TYPE_TABLES[ans.type];
-            cache[ans.type] = cache[ans.type] || {};
-            cache[ans.type][name] = cache[ans.type][name] || [];
-            cache[ans.type][name].push(ans);
+            cache[type] = cache[type] || {};
+            cache[type][name] = cache[type][name] || [];
+            cache[type][name].push(ans);
             res.answer.push(ans);
          });
+         if (answer.length === 0) {
+            cache[type] = cache[type] || {};
+            cache[type][name] = cache[type][name] || [];
+         }
          res.end();
       });
 
@@ -99,4 +110,4 @@ function name(req, res) {
    request.end();
 }
 
-console.log("Started DNS Resolver\nServer is Stand-by\n\n");
+console.log("Started DNS Resolver\nServer is Stand-by\n\nThis Version is " + version + "\n\n");
