@@ -6,6 +6,7 @@
 // http://opensource.org/licenses/mit-license.php
 // ----------------------------------------------------------------------------
 // Version
+// 1.2.1 2018/03/29 MXレコードを正しく返答できないバグの修正
 // 1.2.0 2018/03/29 キャッシュ機能のバグを修正、localhostのAレコードを返すように変更
 // 1.1.0 2018/03/29 PTRレコードとMXレコードに対応
 // 1.0.0 2018/03/28 初版
@@ -17,7 +18,7 @@
 "use strict";//厳格なエラーチェック
 
 // サーバーバージョン
-var version = "1.2.0";
+var version = "1.2.1";
 
 var dnsd = require("dnsd");
 var https = require("https");
@@ -89,6 +90,11 @@ function name(req, res) {
             ans.ttl = String(ans.TTL);
             delete ans.TTL;
             ans.type = TYPE_TABLES[ans.type];
+            if (ans.type === "MX") {
+               let data = ans.data;
+               let match = data.match(/^(\d+) (.+)/);
+               ans.data = [match[1], match[2]];
+            }
             cache[type] = cache[type] || {};
             cache[type][name] = cache[type][name] || [];
             cache[type][name].push(ans);
